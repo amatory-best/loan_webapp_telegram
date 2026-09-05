@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#ffffff">
+<title>Мои займы</title>
+<!-- SheetJS для чтения Excel -->
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<!-- Telegram WebApp SDK -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --color-bg:#f0f2f5;--color-surface:#fff;--color-surface-elevated:#fff;
+  --color-text-primary:#1c1c1e;--color-text-secondary:#8e8e93;--color-text-tertiary:#c7c7cc;
+  --color-accent:#34c759;--color-accent-light:#e8f5e9;--color-accent-dark:#2e7d32;
+  --color-danger:#ff3b30;--color-danger-light:#ffe5e5;
+  --color-warning:#ff9500;--color-warning-light:#fff3e0;
+  --color-info:#007aff;--color-info-light:#e5f2ff;
+  --color-border:#e5e5ea;--color-border-light:#f2f2f7;--color-divider:#e5e5ea;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.04);--shadow-md:0 4px 12px rgba(0,0,0,0.06);
+  --shadow-lg:0 8px 24px rgba(0,0,0,0.08);--shadow-card:0 2px 8px rgba(0,0,0,0.04),0 0 1px rgba(0,0,0,0.08);
+  --radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:20px;--radius-full:9999px;
+  --space-xs:4px;--space-sm:8px;--space-md:12px;--space-lg:16px;--space-xl:20px;--space-2xl:24px;--space-3xl:32px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:"SF Mono","Menlo","Monaco","Courier New",monospace;
+  --transition-fast:150ms cubic-bezier(0.4,0,0.2,1);--transition-normal:250ms cubic-bezier(0.4,0,0.2,1);
+}
+[data-theme="dark"]{
+  --color-bg:#000;--color-surface:#1c1c1e;--color-surface-elevated:#2c2c2e;
+  --color-text-primary:#fff;--color-text-secondary:#8e8e93;--color-text-tertiary:#48484a;
+  --color-border:#38383a;--color-border-light:#2c2c2e;--color-divider:#38383a;
+  --shadow-card:0 2px 8px rgba(0,0,0,0.2),0 0 1px rgba(255,255,255,0.05);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{font-family:var(--font-sans);background:var(--color-bg);color:var(--color-text-primary);line-height:1.5;height:100vh;width:100vw;overflow:hidden;display:flex;flex-direction:column}
+
+/* Header */
+.app-header{background:var(--color-surface);padding:var(--space-md) var(--space-xl);padding-top:calc(var(--space-md) + env(safe-area-inset-top,0px));border-bottom:1px solid var(--color-border-light);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:10}
+.app-title{font-size:20px;font-weight:700;color:var(--color-text-primary);letter-spacing:-0.02em}
+.app-title span{color:var(--color-accent)}
+.icon-btn{width:40px;height:40px;border:none;background:var(--color-border-light);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--color-text-secondary);transition:all var(--transition-fast)}
+.icon-btn:active{transform:scale(0.92);background:var(--color-border)}
+.icon-btn svg{width:20px;height:20px}
+
+/* Summary */
+.summary-section{background:var(--color-surface);padding:var(--space-lg) var(--space-xl) var(--space-xl);border-bottom:1px solid var(--color-border-light);flex-shrink:0}
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-md)}
+.summary-card{background:var(--color-border-light);border-radius:var(--radius-lg);padding:var(--space-md);text-align:center;transition:transform var(--transition-fast)}
+.summary-card:active{transform:scale(0.97)}
+.summary-value{font-size:18px;font-weight:700;color:var(--color-text-primary);line-height:1.2;font-variant-numeric:tabular-nums}
+.summary-value.profit{color:var(--color-accent-dark)}
+.summary-value.danger{color:var(--color-danger)}
+.summary-label{font-size:12px;color:var(--color-text-secondary);margin-top:var(--space-xs);line-height:1.3}
+
+/* Tabs */
+.tabs-section{background:var(--color-surface);padding:0 var(--space-xl) var(--space-md);border-bottom:1px solid var(--color-border-light);flex-shrink:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tabs-section::-webkit-scrollbar{display:none}
+.tabs-list{display:flex;gap:var(--space-sm);min-width:max-content}
+.tab-btn{padding:var(--space-sm) var(--space-md);border:none;background:transparent;color:var(--color-text-secondary);font-size:14px;font-weight:500;font-family:inherit;border-radius:var(--radius-full);cursor:pointer;transition:all var(--transition-fast);white-space:nowrap;position:relative}
+.tab-btn.active{background:var(--color-accent);color:white;box-shadow:0 2px 8px rgba(52,199,89,0.3)}
+.tab-btn .badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;background:var(--color-danger);color:white;font-size:11px;font-weight:600;border-radius:var(--radius-full);margin-left:var(--space-xs);vertical-align:middle}
+.tab-btn.active .badge{background:rgba(255,255,255,0.3);color:white}
+
+/* Loans List */
+.content-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:var(--space-md) var(--space-xl);padding-bottom:calc(var(--space-3xl) + 60px)}
+.content-area::-webkit-scrollbar{display:none}
+.loans-list{display:flex;flex-direction:column;gap:var(--space-md)}
+.loan-card{background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-lg);box-shadow:var(--shadow-card);border:1px solid var(--color-border-light);cursor:pointer;transition:all var(--transition-fast);position:relative;overflow:hidden}
+.loan-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--color-border);transition:background var(--transition-fast)}
+.loan-card.status-danger::before{background:var(--color-danger)}
+.loan-card.status-warning::before{background:var(--color-warning)}
+.loan-card.status-success::before{background:var(--color-accent)}
+.loan-card.status-info::before{background:var(--color-info)}
+.loan-card:active{transform:scale(0.98);box-shadow:var(--shadow-sm)}
+.loan-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-md)}
+.loan-card-amount{font-size:22px;font-weight:700;color:var(--color-text-primary);line-height:1.2;font-variant-numeric:tabular-nums}
+.loan-card-amount .currency{font-size:15px;font-weight:500;color:var(--color-text-secondary)}
+.loan-status-chip{display:inline-flex;align-items:center;gap:var(--space-xs);padding:var(--space-xs) var(--space-sm);font-size:12px;font-weight:600;border-radius:var(--radius-full);white-space:nowrap}
+.loan-status-chip.danger{background:var(--color-danger-light);color:var(--color-danger)}
+.loan-status-chip.warning{background:var(--color-warning-light);color:#e65100}
+.loan-status-chip.success{background:var(--color-accent-light);color:var(--color-accent-dark)}
+.loan-status-chip.info{background:var(--color-info-light);color:var(--color-info)}
+.loan-status-chip::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.loan-status-chip.danger::before{animation:pulse 2s infinite}
+.loan-card-body{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-sm)}
+.loan-card-field{display:flex;flex-direction:column}
+.loan-card-field-label{font-size:12px;color:var(--color-text-secondary);margin-bottom:2px}
+.loan-card-field-value{font-size:14px;font-weight:500;color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+.loan-card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--color-border-light)}
+.loan-card-date{font-size:13px;color:var(--color-text-secondary)}
+.loan-card-profit{font-size:14px;font-weight:600;color:var(--color-accent-dark);font-variant-numeric:tabular-nums}
+.loan-card-profit.negative{color:var(--color-danger)}
+
+/* Bottom Nav */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--color-surface);border-top:1px solid var(--color-border-light);display:flex;justify-content:space-around;padding-bottom:env(safe-area-inset-bottom,0px);z-index:40;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:var(--space-sm) 0;border:none;background:none;color:var(--color-text-secondary);font-family:inherit;font-size:11px;font-weight:500;cursor:pointer;transition:color var(--transition-fast);position:relative}
+.nav-item.active{color:var(--color-accent)}
+.nav-item svg{width:24px;height:24px;transition:transform var(--transition-fast)}
+.nav-item:active svg{transform:scale(0.9)}
+.nav-badge{position:absolute;top:4px;right:calc(50% - 16px);min-width:16px;height:16px;padding:0 4px;background:var(--color-danger);color:white;font-size:10px;font-weight:700;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+
+/* Empty State */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:var(--space-3xl) var(--space-xl);text-align:center;opacity:0;animation:fadeIn 0.5s ease forwards}
+.empty-state-icon{width:80px;height:80px;background:var(--color-border-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-lg)}
+.empty-state-icon svg{width:40px;height:40px;color:var(--color-text-tertiary)}
+.empty-state-title{font-size:18px;font-weight:600;color:var(--color-text-primary);margin-bottom:var(--space-sm)}
+.empty-state-desc{font-size:15px;color:var(--color-text-secondary);line-height:1.5}
+
+/* Modal Overlay */
+.loan-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity 300ms ease}
+.loan-modal-overlay.open{opacity:1;pointer-events:all}
+.loan-modal-overlay.open .loan-modal{transform:translateY(0)}
+.loan-modal{width:100%;max-width:480px;height:92vh;max-height:900px;background:var(--color-surface);border-radius:var(--radius-xl) var(--radius-xl) 0 0;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform 400ms cubic-bezier(0.16,1,0.3,1)}
+
+.modal-header{position:relative;padding:var(--space-lg) var(--space-xl);padding-top:var(--space-md);border-bottom:1px solid var(--color-border-light);flex-shrink:0}
+.modal-header::before{content:"";position:absolute;top:var(--space-sm);left:50%;transform:translateX(-50%);width:36px;height:4px;background:var(--color-text-tertiary);border-radius:var(--radius-full);opacity:0.5}
+.modal-title{font-size:17px;font-weight:600;text-align:center;color:var(--color-text-primary);margin-top:var(--space-sm)}
+.modal-close{position:absolute;right:var(--space-lg);top:50%;transform:translateY(-50%);width:32px;height:32px;border:none;background:var(--color-border-light);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--color-text-secondary);transition:all var(--transition-fast)}
+.modal-close:active{background:var(--color-border);color:var(--color-text-primary)}
+.modal-close svg{width:18px;height:18px}
+
+.modal-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:var(--space-xl);padding-bottom:calc(var(--space-xl) + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.modal-content::-webkit-scrollbar{display:none}
+
+/* Modal: Loan Info */
+.loan-info-block{position:relative;margin-bottom:var(--space-xl)}
+.status-badge{display:inline-flex;align-items:center;gap:var(--space-xs);padding:var(--space-xs) var(--space-md);background:var(--color-danger-light);color:var(--color-danger);font-size:13px;font-weight:600;border-radius:var(--radius-full);margin-bottom:var(--space-md);letter-spacing:0.02em}
+.status-badge::before{content:"";width:6px;height:6px;background:var(--color-danger);border-radius:50%;animation:pulse 2s infinite}
+.status-badge.success{background:var(--color-accent-light);color:var(--color-accent-dark)}
+.status-badge.success::before{background:var(--color-accent)}
+.status-badge.warning{background:var(--color-warning-light);color:#e65100}
+.status-badge.warning::before{background:var(--color-warning)}
+.status-badge.info{background:var(--color-info-light);color:var(--color-info)}
+.status-badge.info::before{background:var(--color-info)}
+
+.loan-amount{font-size:42px;font-weight:700;color:var(--color-text-primary);line-height:1.1;margin-bottom:var(--space-sm);letter-spacing:-0.02em}
+.loan-amount .currency{font-size:24px;font-weight:600;color:var(--color-text-secondary)}
+.loan-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);margin-top:var(--space-lg)}
+.meta-item{background:var(--color-border-light);padding:var(--space-md);border-radius:var(--radius-md)}
+.meta-label{font-size:12px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-xs)}
+.meta-value{font-size:15px;font-weight:600;color:var(--color-text-primary)}
+.dates-row{display:flex;gap:var(--space-lg);margin-top:var(--space-lg);padding-top:var(--space-lg);border-top:1px solid var(--color-divider)}
+.date-item{flex:1}
+.date-label{font-size:13px;color:var(--color-text-secondary);margin-bottom:var(--space-xs)}
+.date-value{font-size:15px;font-weight:600;color:var(--color-text-primary)}
+
+/* Modal: Finance */
+.finance-block{background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-xl);margin-bottom:var(--space-xl);box-shadow:var(--shadow-card);border:1px solid var(--color-border-light)}
+.finance-header{display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-lg);padding-bottom:var(--space-md);border-bottom:1px dashed var(--color-divider)}
+.finance-header-icon{width:36px;height:36px;background:var(--color-accent-light);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center}
+.finance-header-icon svg{width:20px;height:20px;color:var(--color-accent)}
+.finance-header-title{font-size:16px;font-weight:600;color:var(--color-text-primary)}
+.finance-header-subtitle{font-size:13px;color:var(--color-text-secondary)}
+.finance-row{display:flex;justify-content:space-between;align-items:center;padding:var(--space-sm) 0}
+.finance-row:not(:last-child){border-bottom:1px solid var(--color-border-light)}
+.finance-label{font-size:15px;color:var(--color-text-secondary)}
+.finance-value{font-size:15px;font-weight:600;color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+.finance-row.profit{background:var(--color-accent-light);margin:var(--space-md) calc(-1 * var(--space-xl)) calc(-1 * var(--space-xl));padding:var(--space-md) var(--space-xl);border-radius:0 0 var(--radius-lg) var(--radius-lg);border-top:1px solid var(--color-accent)}
+.finance-row.profit .finance-label{color:var(--color-accent-dark);font-weight:600}
+.finance-row.profit .finance-value{color:var(--color-accent-dark);font-size:20px;font-weight:700}
+
+/* Modal: Client */
+.client-block{background:var(--color-surface-elevated);border-radius:var(--radius-lg);padding:var(--space-xl);margin-bottom:var(--space-xl);box-shadow:var(--shadow-card);border:1px solid var(--color-border-light)}
+.client-header{display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-lg)}
+.client-avatar{width:44px;height:44px;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-dark));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:700;flex-shrink:0}
+.client-header-text{flex:1}
+.client-header-title{font-size:16px;font-weight:600;color:var(--color-text-primary)}
+.client-header-subtitle{font-size:13px;color:var(--color-text-secondary)}
+.client-row{display:flex;justify-content:space-between;align-items:center;padding:var(--space-md) 0;border-bottom:1px solid var(--color-border-light)}
+.client-row:last-child{border-bottom:none}
+.client-label{font-size:14px;color:var(--color-text-secondary)}
+.client-value{font-size:15px;font-weight:500;color:var(--color-text-primary);text-align:right}
+.client-value.phone{color:var(--color-info);text-decoration:none;display:inline-flex;align-items:center;gap:var(--space-xs)}
+.client-value.phone:active{opacity:0.7}
+.client-value.copyable{display:inline-flex;align-items:center;gap:var(--space-xs);cursor:pointer;padding:var(--space-xs) var(--space-sm);background:var(--color-border-light);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;transition:all var(--transition-fast);user-select:all}
+.client-value.copyable:active{background:var(--color-accent-light);color:var(--color-accent-dark)}
+.client-value.copyable .copy-icon{width:14px;height:14px;opacity:0.5}
+
+/* Modal: Actions */
+.actions-block{position:sticky;bottom:0;background:var(--color-surface);padding:var(--space-lg) var(--space-xl);padding-bottom:calc(var(--space-lg) + env(safe-area-inset-bottom,0px));border-top:1px solid var(--color-border-light);display:flex;flex-direction:column;gap:var(--space-md);flex-shrink:0}
+.btn{display:flex;align-items:center;justify-content:center;gap:var(--space-sm);width:100%;padding:var(--space-md) var(--space-xl);border:none;border-radius:var(--radius-md);font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;transition:all var(--transition-fast);position:relative;overflow:hidden;min-height:52px}
+.btn:active{transform:scale(0.98)}
+.btn-primary{background:linear-gradient(135deg,var(--color-accent),var(--color-accent-dark));color:white;box-shadow:0 4px 12px rgba(52,199,89,0.3)}
+.btn-primary:active{box-shadow:0 2px 8px rgba(52,199,89,0.3)}
+.btn-secondary{background:var(--color-border-light);color:var(--color-text-primary);border:1px solid var(--color-border)}
+.btn-secondary:active{background:var(--color-border)}
+.btn svg{width:20px;height:20px;flex-shrink:0}
+
+/* Toast */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--color-text-primary);color:white;padding:var(--space-md) var(--space-xl);border-radius:var(--radius-full);font-size:14px;font-weight:500;opacity:0;pointer-events:none;transition:all var(--transition-normal);z-index:2000;white-space:nowrap;box-shadow:var(--shadow-md)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* File Upload Button */
+.upload-section{padding:var(--space-xl);background:var(--color-surface);border-top:1px solid var(--color-border-light);flex-shrink:0}
+.upload-btn{display:flex;align-items:center;justify-content:center;gap:var(--space-sm);width:100%;padding:var(--space-lg);border:2px dashed var(--color-border-light);border-radius:var(--radius-lg);background:var(--color-border-light);color:var(--color-text-secondary);font-size:15px;font-weight:500;cursor:pointer;transition:all var(--transition-fast)}
+.upload-btn:hover{border-color:var(--color-accent);color:var(--color-accent);background:var(--color-accent-light)}
+.upload-btn:active{transform:scale(0.98)}
+.upload-btn svg{width:24px;height:24px}
+
+/* Animations */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.loan-card{opacity:0;animation:fadeIn 0.4s ease forwards}
+.loans-list .loan-card:nth-child(1){animation-delay:0.05s}
+.loans-list .loan-card:nth-child(2){animation-delay:0.1s}
+.loans-list .loan-card:nth-child(3){animation-delay:0.15s}
+.loans-list .loan-card:nth-child(4){animation-delay:0.2s}
+.loans-list .loan-card:nth-child(5){animation-delay:0.25s}
+.loans-list .loan-card:nth-child(6){animation-delay:0.3s}
+
+@media(min-width:480px){
+  .loan-modal-overlay{align-items:center;padding:var(--space-xl)}
+  .loan-modal{height:85vh;border-radius:var(--radius-xl);margin:auto}
+  .app-header,.summary-section,.tabs-section,.content-area{padding-left:var(--space-2xl);padding-right:var(--space-2xl)}
+}
+@media(max-width:360px){
+  .summary-grid{grid-template-columns:1fr;gap:var(--space-sm)}
+  .summary-card{display:flex;justify-content:space-between;align-items:center;text-align:left}
+  .summary-label{margin-top:0}
+  .loan-amount{font-size:36px}
+  .modal-content{padding:var(--space-lg)}
+  .finance-block,.client-block{padding:var(--space-lg)}
+}
+
+/* Мессенджеры */
+.messenger-icons{display:flex;gap:8px;margin-top:8px}
+.messenger-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s ease;text-decoration:none}
+.messenger-icon:active{transform:scale(.9)}
+.messenger-icon svg{width:20px;height:20px}
+.messenger-tg{background:#28a8e9}
+.messenger-wa{background:#25d366}
+.messenger-vb{background:#7360f2}
+.loan-source-info {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin-top: 4px;
+  font-weight: 400;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.quote-block{background:var(--color-border-light);border-left:3px solid var(--color-accent);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:10px 12px;font-size:14px;color:var(--color-text-primary);line-height:1.4;max-width:70%;white-space:pre-wrap;word-break:break-word}
+[data-theme="dark"] .quote-block{background:var(--color-border-light);border-left-color:var(--color-accent)}
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header class="app-header">
+<h1 class="app-title">Мои <span>займы</span></h1>
+<div class="header-actions">
+<div style="display:flex;align-items:center;gap:8px;position:relative">
+<input type="text" id="searchInput" placeholder="Поиск по фамилии..." style="display:none;width:0;opacity:0;transition:all 0.3s ease;border:1px solid var(--color-border);border-radius:20px;padding:8px 14px;font-size:14px;background:var(--color-surface);color:var(--color-text-primary);outline:none">
+<button class="icon-btn" id="btnSearch" aria-label="Поиск">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+</button>
+</div>
+</div>
+</header>
+
+<!-- ===== SUMMARY ===== -->
+<section class="summary-section">
+<div class="summary-grid">
+<div class="summary-card"><div class="summary-value" id="summaryTotal">12 400 ₽</div><div class="summary-label">В портфеле</div></div>
+<div class="summary-card"><div class="summary-value danger" id="summaryOverdue">3 200 ₽</div><div class="summary-label">Просрочка</div></div>
+<div class="summary-card"><div class="summary-value profit" id="summaryProfit">+1 847 ₽</div><div class="summary-label">Прибыль</div></div>
+</div>
+</section>
+
+<!-- ===== TABS ===== -->
+<nav class="tabs-section">
+<div class="tabs-list" id="tabsList">
+<button class="tab-btn active" data-filter="nearest">Ближайшие <span class="badge" id="badgeNearest">6</span></button>
+<button class="tab-btn" data-filter="active">Активные <span class="badge" id="badgeActive">4</span></button>
+<button class="tab-btn" data-filter="overdue">Просрочка <span class="badge" id="badgeOverdue">1</span></button>
+<button class="tab-btn" data-filter="closed">Закрытые <span class="badge" id="badgeClosed">1</span></button>
+</div>
+</nav>
+
+<!-- ===== LOANS LIST ===== -->
+<main class="content-area" id="contentArea">
+<div class="loans-list" id="loansList"></div>
+</main>
+
+<!-- ===== SCREEN: STATISTICS ===== -->
+<div id="screenStats" class="screen" style="display:none;flex-direction:column;height:100vh;overflow:hidden">
+  <header class="app-header">
+    <h1 class="app-title">Статистика</h1>
+  </header>
+  <div class="screen-content" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 20px 80px">
+    <div class="kpi-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:16px 0">
+      <div class="kpi-card" style="background:var(--color-surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-card)">
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px">Прибыль</div>
+        <div id="kpiProfit" style="font-size:20px;font-weight:700;color:var(--color-accent-dark)">0 ₽</div>
+      </div>
+      <div class="kpi-card" style="background:var(--color-surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-card)">
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px">Просрочка</div>
+        <div id="kpiOverdue" style="font-size:20px;font-weight:700;color:var(--color-danger)">0 ₽</div>
+      </div>
+      <div class="kpi-card" style="background:var(--color-surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-card)">
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px">% просрочки</div>
+        <div id="kpiOverduePct" style="font-size:20px;font-weight:700;color:var(--color-text-primary)">0%</div>
+      </div>
+      <div class="kpi-card" style="background:var(--color-surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-card)">
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px">Активных</div>
+        <div id="kpiActive" style="font-size:20px;font-weight:700;color:var(--color-text-primary)">0</div>
+      </div>
+      <div class="kpi-card" style="background:var(--color-surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-card);grid-column:1/-1">
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px">Средний займ</div>
+        <div id="kpiAvg" style="font-size:20px;font-weight:700;color:var(--color-text-primary)">0 ₽</div>
+      </div>
+    </div>
+    <div style="background:var(--color-surface);border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow-card)">
+      <div style="font-size:16px;font-weight:600;margin-bottom:12px">Динамика прибыли и просрочки</div>
+      <div style="height:220px"><canvas id="chartDynamics"></canvas></div>
+    </div>
+    <div style="background:var(--color-surface);border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow-card)">
+      <div style="font-size:16px;font-weight:600;margin-bottom:12px">Топ-10 должников</div>
+      <div id="topDebtorsTable" style="overflow-x:auto"></div>
+    </div>
+    <div style="background:var(--color-surface);border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow-card)">
+      <div style="font-size:16px;font-weight:600;margin-bottom:12px">Прогноз поступлений (до конца месяца)</div>
+      <div id="forecastTable" style="overflow-x:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: PROFILE ===== -->
+<div id="screenProfile" class="screen" style="display:none;flex-direction:column;height:100vh;overflow:hidden">
+  <header class="app-header">
+    <h1 class="app-title">Профиль</h1>
+  </header>
+  <div class="screen-content" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 20px 80px">
+    <div style="background:var(--color-surface);border-radius:16px;padding:20px;margin-top:16px;box-shadow:var(--shadow-card)">
+      <div style="font-size:16px;font-weight:600;margin-bottom:16px">Персонализация</div>
+      <div style="font-size:14px;color:var(--color-text-secondary);margin-bottom:12px">Тема оформления</div>
+      <div style="display:flex;gap:8px">
+        <button class="theme-btn" data-theme="light" style="flex:1;padding:12px;border:2px solid var(--color-border);border-radius:12px;background:var(--color-surface);font-size:14px;font-weight:500;cursor:pointer;transition:all .2s">
+          <div style="width:24px;height:24px;border-radius:50%;background:#f0f2f5;border:2px solid #ddd;margin:0 auto 4px"></div>
+          Светлая
+        </button>
+        <button class="theme-btn" data-theme="dark" style="flex:1;padding:12px;border:2px solid var(--color-border);border-radius:12px;background:var(--color-surface);font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;color:var(--color-text-primary)">
+          <div style="width:24px;height:24px;border-radius:50%;background:#1c1c1e;border:2px solid #444;margin:0 auto 4px"></div>
+          Тёмная
+        </button>
+        <button class="theme-btn" data-theme="system" style="flex:1;padding:12px;border:2px solid var(--color-border);border-radius:12px;background:var(--color-surface);font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;color:var(--color-text-primary)">
+          <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#f0f2f5 50%,#1c1c1e 50%);border:2px solid #ddd;margin:0 auto 4px"></div>
+          Системная
+        </button>
+      </div>
+    </div>
+    <div style="background:var(--color-surface);border-radius:16px;padding:20px;margin-top:16px;box-shadow:var(--shadow-card)">
+      <div style="font-size:16px;font-weight:600;margin-bottom:16px">Синхронизация</div>
+      <div id="syncStatus" style="font-size:14px;color:var(--color-text-secondary);margin-bottom:12px">Сервер: не подключен</div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:13px;color:var(--color-text-secondary);margin-bottom:4px">URL сервера</label>
+        <input type="text" id="serverUrl" value="http://localhost:5000" style="width:100%;padding:10px 12px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-bg);color:var(--color-text-primary);font-size:14px;outline:none">
+      </div>
+      <button id="btnSaveUrl" style="width:100%;padding:14px;border:none;border-radius:12px;background:var(--color-accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:8px">Сохранить и подключить</button>
+      <button id="btnSyncNow" style="width:100%;padding:14px;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface);color:var(--color-text-primary);font-size:15px;font-weight:500;cursor:pointer">Синхронизировать сейчас</button>
+    </div>
+    <div style="background:var(--color-surface);border-radius:16px;padding:20px;margin-top:16px;box-shadow:var(--shadow-card)">
+      <div style="font-size:16px;font-weight:600;margin-bottom:12px">Найденные файлы</div>
+      <div id="fileList" style="max-height:200px;overflow-y:auto"></div>
+    </div>
+    <div style="background:var(--color-surface);border-radius:16px;padding:20px;margin-top:16px;box-shadow:var(--shadow-card);margin-bottom:32px">
+      <div style="font-size:16px;font-weight:600;margin-bottom:8px">О приложении</div>
+      <div style="font-size:14px;color:var(--color-text-secondary)">Версия 1.2.0<br>Учёт займов</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== BOTTOM NAV ===== -->
+<nav class="bottom-nav">
+<button class="nav-item active" data-screen="home">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+<span>Главная</span>
+<span class="nav-badge" id="navBadge" style="display:none">1</span>
+</button>
+<button class="nav-item" data-screen="stats">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+<span>Статистика</span>
+</button>
+<button class="nav-item" data-screen="profile">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+<span>Профиль</span>
+</button>
+</nav>
+
+<!-- ═══════════════════════════════════════ -->
+<!--  МОДАЛЬНОЕ ОКНО                        -->
+<!-- ═══════════════════════════════════════ -->
+<div class="loan-modal-overlay" id="loanModalOverlay">
+<div class="loan-modal" id="loanModal">
+<div class="modal-header">
+<button class="modal-close" id="modalClose" aria-label="Закрыть">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+</button>
+<h2 class="modal-title" id="modalTitle">Детали займа</h2>
+<div class="loan-source-info" id="loanSource" title=""></div>
+</div>
+<div class="modal-content" id="modalContent">
+<div class="loan-info-block" id="loanInfoBlock">
+<div class="status-badge" id="statusBadge">Просрочка</div>
+<div class="loan-amount" id="loanAmount">200 <span class="currency">руб.</span></div>
+<div class="loan-meta-grid">
+<div class="meta-item"><div class="meta-label">Срок</div><div class="meta-value" id="loanTerm">7 дн.</div></div>
+<div class="meta-item"><div class="meta-label">Ставка</div><div class="meta-value" id="loanRate">5.35%/день</div></div>
+</div>
+<div class="dates-row">
+<div class="date-item"><div class="date-label">Выдача</div><div class="date-value" id="issueDate">16.07.2026</div></div>
+<div class="date-item"><div class="date-label">Возврат</div><div class="date-value" id="returnDate">23.07.2026</div></div>
+</div>
+</div>
+<div class="finance-block" id="financeBlock">
+<div class="finance-header">
+<div class="finance-header-icon">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+</div>
+<div><div class="finance-header-title">Финансовый расчёт</div><div class="finance-header-subtitle">По состоянию на сегодня</div></div>
+</div>
+<div class="finance-row"><span class="finance-label">К возврату</span><span class="finance-value" id="totalReturn">274,90 руб.</span></div>
+<div class="finance-row"><span class="finance-label">Налоги</span><span class="finance-value" id="taxes">9,74 руб.</span></div>
+<div class="finance-row"><span class="finance-label">5% сервису</span><span class="finance-value" id="serviceFee">13,74 руб.</span></div>
+<div class="finance-row"><span class="finance-label">На карту (чистыми)</span><span class="finance-value" id="toCard">261,15 руб.</span></div>
+<div class="finance-row profit"><span class="finance-label">Чистая прибыль</span><span class="finance-value" id="netProfit">51,42 руб.</span></div>
+</div>
+<div class="client-block" id="clientBlock">
+<div class="client-header">
+<div class="client-avatar" id="clientAvatar">СД</div>
+<div class="client-header-text"><div class="client-header-title">Заёмщик</div><div class="client-header-subtitle">Физическое лицо</div></div>
+</div>
+<div class="client-row"><span class="client-label">ФИО</span><span class="client-value" id="clientName">СЕВЕРИН ДАНИИЛ МИХАЙЛОВИЧ</span></div>
+<div class="client-row"><span class="client-label">Телефон</span><a href="tel:+375445335204" class="client-value phone" id="clientPhone"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span id="phoneText">+375 44 533-52-04</span></a></div>
+<div id="messengerIcons" style="display:none"></div>
+<div class="client-row" style="align-items:flex-start"><span class="client-label" style="padding-top:10px">Заметки</span><div class="quote-block" id="clientNotes">—</div></div>
+<div class="client-row"><span class="client-label">Идент. номер</span><span class="client-value copyable" id="clientId" data-copy="7759107A001PB5">7759107A001PB5<svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span></div>
+<div class=client-row id=extraInfoRow style=display:none><span class=client-label>Доп. инфо</span><span class=client-value id=clientExtraInfo style=white-space:pre-wrap;max-width:60%;text-align:right;font-size:13px></span></div>
+</div>
+</div>
+<div class="actions-block">
+<button class="btn btn-primary" id="btnCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Проверить ИЛ</button>
+</div>
+</div>
+</div>
+
+<div class="toast" id="toast">Скопировано!</div>
+
+<!-- Скрытый input для загрузки файла -->
+
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
